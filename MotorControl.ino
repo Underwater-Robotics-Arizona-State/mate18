@@ -66,15 +66,7 @@ void motor_value_pull( const std_msgs::Int16MultiArray& values){
   pwm.setPWM(CLAW_ROTATION_PIN, 0, values.data[7]);
   pwm.setPWM(CLAW_BOTTOM_PIN, 0, values.data[8]);
 
-  back[0] = values.data[0];
-  back[1] = values.data[1];
-  back[2] = values.data[2];
-  back[3] = values.data[3];
-  back[4] = values.data[4];
-  back[5] = values.data[5];
-  back[6] = values.data[6];
-  back[7] = values.data[7];
-  back[8] = values.data[8];
+  for(int i = 0; i < 9; i++) back[i] = values.data[i];
   
    
 }
