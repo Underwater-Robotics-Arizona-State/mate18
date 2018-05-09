@@ -50,6 +50,10 @@ def normVector(vector):
     return normed_vector
 
 
+def 2d_dot(v1, v2):
+    return (v1[0] * v2[0]) + (v1[1] * v2[1])
+
+
 def callback(data):
 
     #  Xbox 360 Wired Controller for Linux Mapping
@@ -90,9 +94,9 @@ def callback(data):
     axes = data.axes
 
     # twist values assigned in the msg are in the range [-1.0, 1.0]
-    twist_msg.linear.x = axes[0]  # left stick left-right
+    twist_msg.linear.x = -axes[0]  # left stick left-right
     twist_msg.linear.y = axes[1]  # left stick up-down
-    twist_msg.angular.z = -axes[3]  # right stick left-right, inverted so CCW is positive
+    twist_msg.angular.z = axes[3]  # right stick left-right, inverted so CCW is positive
 
     if buttons[5]:  # RB = positive z = up
         twist_msg.linear.z = 1.0
@@ -101,17 +105,13 @@ def callback(data):
     else:
         twist_msg.linear.z = 0.0
 
-    if buttons[6]:  # Back button turns toggles light
-        #  if the light is off and the button was just pressed, turn on the light
-        if not light_toggle and not prev_light_button_state:
-            light_toggle = True
-            light_toggle_msg = True
-        #  if the light is on and the button was just pressed, turn off the light
-        elif light_toggle and not prev_light_button_state:
-            light_toggle = False
-            light_toggle_msg = False
+    if buttons[6] and (not prev_light_toggle): # Back button toggles light
+        light_toggle = (not light_toggle)
 
-        prev_light_button_state = buttons[6]
+    light_toggle_msg = light_toggle
+    
+    prev_light_button_state = buttons[6]
+
 
     if buttons[7]:  # Start button activates the wifi signal
         wifi_msg = True
@@ -119,58 +119,58 @@ def callback(data):
     '''
     the labels refer to the index of each motor in the motor_values_msg.data array
     
-    0       1
-    /-------\
+     /      \
+    0-------1
+   /|       |\
     |       |
-    |       |
-    |       |
-    \-------/
-    2       3
+   \|       |/
+    2-------3
+     \     /  
     
     '''
 
     vt = [twist_msg.linear.x, twist_msg.linear.y]  # translational velocity in x and y
+    
     w = twist_msg.angular.z  # rotational velocity, with CCW rotation being positive
 
-    v0 = [vt[0], -vt[1]]
-    v1 = [-vt[0], -vt[1]]
-    v2 = [vt[0], vt[1]]
-    v3 = [-vt[0], vt[1]]
+    #  direction vectors for each of the motors
+    u0 = [1, 1]
+    u1 = [-1, 1]
+    u2 = [1, -1]
+    u3 = [-1, -1]
+    
 
-    v0_mag = vectorMagnitude(v0)
-    v1_mag = vectorMagnitude(v1)
-    v2_mag = vectorMagnitude(v2)
-    v3_mag = vectorMagnitude(v3)
+    v0_mag = 2d_dot(vt, u0) - w
+    v1_mag = 2d_dot(vt, u1) + w
+    v2_mag = 2d_dot(vt, u2) + w
+    v3_mag = 2d_dot(vt, u3) - w
 
-    if w > 0.05:  # if rotating CCW
-        v0_mag += w
-        v3_mag += w
-    elif w < 0.05:  # if rotating CW
-        v1_mag -= w
-        v2_mag -= w
 
     #  v4 is the velocity of the front z-axis motor oriented down
     #  v5 is the velocity of the back z-axis motor oriented down
     v4_mag = twist_msg.linear.z
     v5_mag = twist_msg.linear.z
 
-    #  Claw grab velocity is set to the magnitude of RT minus the magnitude of LT, both of which range from 0.0 to 1.0
-    claw_grab = axes[5] - axes[2]
+    #  Claw grab velocity is set to the magnitude of RT minus the magnitude of LT, both of which range from 0.0 to 1.0, and capped at 1/2 max speed
+    claw_grab = 0.5*((-axes[4] + 1.0) / 2.0 - (-axes[5] + 1.0) / 2.0)
 
-    #  claw rotation magnitude is kept at 0 or 1/4 max speed
+    #  claw rotation max speed is kept at 0 or 1/4 max speed
     #  B button rotates CW, X Button rotates CCW
+    #  if rotation is being applied, the claw grab speed is applied in the opposite direction to cancel out the rotation's effect on it
     claw_rotation = 0.0
-    #  if X button is pressed, set speed negative (CCW)
+    #  if X button is pressed, set rotate velocity negative (CCW) and grab velocity negative (out)
     if buttons[2]:
         claw_rotation = -0.25
-    #  if B button is pressed, set speed positive (CW)
+        claw_grab = 0.5
+    #  if B button is pressed, set rotate velocity positive (CW) and grab velocity positive (in)
     elif buttons[1]:
         claw_rotation = 0.25
+        claw_grab = -0.5
     #  if neither are pressed, set speed zero
     else:
         claw_rotation = 0.0
 
-    #  claw bottom magnitude is kept at 0 or 1/4 max speed
+    #  claw bottom max speed is kept at 1/4 max speed
     #  A button sets speed negative (backward)
     #  Y button sets speed positive (forward)
     claw_bottom = 0.0
@@ -191,9 +191,9 @@ def callback(data):
     #  using the scaling factor and offset of the BlueRobotics Basic ESCs
     motor_values_pwm = scaleNormValuesToPWM(motor_values, 0, 8)
 
-    motor_values_msg.data = (motor_values_pwm[0], motor_values_pwm[1], motor_values_pwm[2], motor_values_pwm[3],
-                             motor_values_pwm[4], motor_values_pwm[5], motor_values_pwm[6], motor_values_pwm[7],
-                             motor_values_pwm[8])
+    motor_values_msg.data = (int(motor_values_pwm[0]), int(motor_values_pwm[1]), int(motor_values_pwm[2]), int(motor_values_pwm[3]),
+                             int(motor_values_pwm[4]), int(motor_values_pwm[5]), int(motor_values_pwm[6]), int(motor_values_pwm[7]),
+                             int(motor_values_pwm[8]))
 
     #  publish all messages to their respective topics
     twist_pub.publish(twist_msg)
