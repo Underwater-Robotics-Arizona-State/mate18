@@ -1,0 +1,7 @@
+<launch>
+  <node name="CamMaster" pkg="cameras" type="cam_master.py">
+  </node>
+  
+  <node name="SerialNode" pkg="rosserial_python" type="serial_node.py">
+  </node>
+</launch>

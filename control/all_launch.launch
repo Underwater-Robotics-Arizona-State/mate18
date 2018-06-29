@@ -1,0 +1,68 @@
+<launch>
+  <machine name="master" address="127.0.0.1" user="nasgrds" password="mate18" env-loader="/home/nasgrds/catkin_ws/devel/env.sh" />
+  <machine name="slave" address="nagrrs" user="nagrrs" password="mate18" env-loader="/home/nagrrs/catkin_ws/devel/env.sh" />
+
+  <node machine="master" name="JoyDriver" pkg="joy" type="joy_node">
+    <param name="dev" value="/dev/input/js0" />
+  </node>
+
+  <node machine="master" name="JoyListener" pkg="control" type="joystick_listener.py" respawn="true">
+  </node>
+  
+  <node machine="slave" name="SerialNode" pkg="rosserial_python" type="serial_node.py">
+  </node>
+
+  <!-- ONLY WORKS 1 AT A TIME
+  <node machine="slave" name="FrontCamLeft" pkg="cv_camera" type="cv_camera_node">
+    <param name="cv_camera/device_id" value="0" />
+    <remap from="image_raw" to="front_cam/left/image_raw"/>
+    <remap from="camera_info" to="front_cam/left/camera_info"/>
+  </node>
+  -->
+
+  <node machine="slave" name="FrontCamRight" pkg="cv_camera" type="cv_camera_node">
+    <param name="cv_camera/device_id" value="1" />
+    <remap from="image_raw" to="front_cam/right/image_raw"/>
+    <remap from="camera_info" to="front_cam/right/camera_info"/>
+  </node>
+  
+  <!-- THIS CAMERA DEAD ON ROV ITSELF
+  <node machine="slave" name="BottomCam" pkg="cv_camera" type="cv_camera_node">
+    <param name="cv_camera/device_id" value="2" />
+    <remap from="image_raw" to="bottom_cam/image_raw"/>
+    <remap from="camera_info" to="bottom_cam/camera_info"/>
+  </node>
+  -->
+
+  <!--
+  <node machine="master" name="GUI" pkg="gui" type="GUI.py" respawn="true">
+  </node>
+  -->
+
+  <!-- uncomment this if GUI does not display frames
+  <node machine="master" name="FrontCamViewer" pkg="image_view" type="stereo_view" respawn="true">
+    <param name="stereo" value="front_cam" />
+    <param name="image" value="image_raw" />
+  </node>
+
+  <node machine="master" name="BottomCamViewer" pkg="image_view" type="image_view" respawn="true">
+    <param name="image" type="bottom_cam/image_raw" />
+  </node>
+  -->
+
+  <!--
+  <node machine="slave" name="CamMaster" pkg="camera_slave" type="cam_master.py">
+  </node>
+  -->
+
+  <!-- these are gone for good
+  <node machine="master" name="FrontCamViewer" pkg="image_view" type="stereo_view" respawn="true">
+    <param name="stereo" value="/front_cam" />
+    <param name="image" value="/image_rect_color" />
+  </node
+
+  <node machine="master" name="BottomCamViewer" pkg="image_view" type="image_view" respawn="true">
+    <param name="image" value="bottom_cam" />
+  </node>
+  -->
+</launch>
